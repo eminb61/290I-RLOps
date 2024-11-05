@@ -60,7 +60,7 @@ def maskable_ppo(log_dir, tensorboard_log_dir, env_config, rl_config, progress_b
                         tensorboard_log=tensorboard_log_dir,
                         stats_window_size=200) 
     # Print the model
-    print(f"Using environment: {envs} with {MaskablePPO} policy")  
+    print(f"Using environment: {envs} with {MaskablePPO} policy. It will run for {rl_config['total_steps']} steps")  
 
     callbacks = []    
     callbacks.append(HParamCallback(params=rl_config))
@@ -68,7 +68,7 @@ def maskable_ppo(log_dir, tensorboard_log_dir, env_config, rl_config, progress_b
     # Save a checkpoint every X steps
     checkpoint_callback = CheckpointCallback(save_freq=100000, save_path=log_dir,
                                              name_prefix="checkpoint", save_vecnormalize=True)
-    callbacks.append(checkpoint_callback)
+    # callbacks.append(checkpoint_callback)
     
 
     early_stopping_callback = EarlyStoppingCallback(check_freq=20000,
@@ -83,12 +83,9 @@ def maskable_ppo(log_dir, tensorboard_log_dir, env_config, rl_config, progress_b
 
     rl_config['hidden_layers'] = str(rl_config['hidden_layers'])
 
-    try:
-        model.learn(total_timesteps=rl_config['total_steps'], 
-                    callback=callbacks,
-                    log_interval=1, progress_bar=True)
-    finally:
-        envs.close()
+    model.learn(total_timesteps=rl_config['total_steps'], 
+                callback=callbacks,
+                log_interval=1, progress_bar=True)
     
     print("Training finished: Exp id: ", exp_id)
 
@@ -101,5 +98,3 @@ def maskable_ppo(log_dir, tensorboard_log_dir, env_config, rl_config, progress_b
     # Evaluate the trained agent
     # mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=3)
     # print(f"Mean reward: {mean_reward:.2f} +/- {std_reward:.2f}")
-    print(f"Last episode reward mean: {model.last_ep_rew_mean}")
-    return model.last_ep_rew_mean

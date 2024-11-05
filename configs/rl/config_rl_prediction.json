@@ -1,6 +1,6 @@
 {
     "sim_params": {
-        "max_sim_time": 55296000,
+        "max_sim_time": 86700,
         "arrival_priority": 0,
         "departure_priority": 1,
         "simultaneous_taxi_and_take_off": true,
@@ -10,9 +10,6 @@
         "logging": true,
         "log_level": "debug",
         "max_passenger_waiting_time": 600,
-        "quadratic_states": {
-            "waiting_time_bins": 2
-        },
         "per_destination_states": [
             "num_waiting_passengers",
             "num_spilled_passengers",                
@@ -42,13 +39,15 @@
         "network_simulation": true,
         "verbose": false,
         "print_brief_metrics": true,        
-        "training_data_collection": false
+        "training_data_collection": false,
+        "algorithm": "MaskablePPO",
+        "light_simulation": true    
     },
     "sim_mode": {
         "ondemand": false,
         "offline_optimization": false,
         "rl": true,
-        "client_server": false,
+        "client_server": true,
         "optim_rl_comparison": true
     },
     "external_optimization_params": {
@@ -57,12 +56,11 @@
         "charge_assignment_sensitivity": null,
         "charge_schedule_file_path": null,
         "flight_schedule_file_path": null,
-        "optuna_db_url": "sqlite:///waiting_time_bins_tta_exp_pax_overfit.db",        
+        "optuna_db_url": "sqlite:///vert_2_dm_5mins.db",        
         "num_parallel_envs": 1,
         "soc_increment_per_charge_event": null,
-        "charge_time_per_charge_event": 300,
+        "charge_time_per_charge_event": 299,
         "periodic_time_step": 300,
-        "num_waiting_time_bins": 2,
         "periodic_and_event_driven": false,
         "spill_optimization": true,
         "stopping_events": [
@@ -80,43 +78,44 @@
         "reward_function_parameters": {
             "waiting_time_cost_type": "linear",
             "waiting_time_cost_unit": "minute",
-            "waiting_time_cost": 1,
-            "spill_cost": 100,    
-            "usd_energy_per_kwh": 0.25,                            
-            "usd_casm": 0.73,
-            "usd_base_fare": 0,
-            "usd_pax_mile": 3,  
-
+            "waiting_time_cost": 0,
             "holding_penalty": 0,    
             "trip_reward": 10,
             "flight_cost": -1,
             "truncation_penalty": -100000,
-            "charge_reward": 1,
             "soc_reward_threshold": 80,
             "waiting_full_pax_but_charge_penalty": -2,
             "waiting_full_pax_but_do_nothing_penalty": -4,
             "no_pax_and_do_nothing_reward": 1,
             "no_pax_and_charge_reward": 2,
             "unnecessary_flight_penalty": -20,
-            "repositioning_reward": 10
+            "charge_reward": 1,
+            "repositioning_reward": 27,
+            "spill_cost": 100,    
+            "usd_energy_per_kwh": 0.25,                            
+            "usd_casm": 0.73,
+            "usd_base_fare": 0,
+            "usd_pax_mile": 3
         }
     },
     "network_and_demand_params": {
-        "vertiport_network_file_path": null,
+        "vertiport_network_file_path": "vertisim/vertisim/input/network/network_LAX_DTLA.csv",
         "vertiport_layout_file_path": "vertisim/vertisim/input/vertiport_layouts/vertiport_layout.xls",
-        "passenger_schedule_file_path": "vertisim/vertisim/input/passenger/spill_demand/alpha_7_demand_500_demand/6_22.csv",
+        "passenger_schedule_file_path": null,
         "passenger_arrival_rates_path": null,
         "pick_demand_files_path": null,
         "pick_rate_files_path": null,
         "autoregressive_demand_files_path": null,
         "demand_probabilities": null,
-        "demand_lookahead_time": 600,
+        "demand_lookahead_time": 900,
+        "star_network": false,
+        "hub_vertiport_id": "LAX",
         "vertiports": {
             "LAX": {
-                "layout": "clover_1_fato_8_park_lax",
+                "layout": "clover_3_fato_30_park_lax",
                 "holding_unit_capacity": 20,
                 "num_security_check_servers": 10,
-                "num_chargers": 10,
+                "num_chargers": 30,
                 "charger_max_charge_rate": 350,
                 "charger_efficiency": 0.9,
                 "shared_charger_sets": null,
@@ -132,12 +131,12 @@
                     }
                 },
                 "aircraft_arrival_process": {
-                    "num_initial_aircraft_at_vertiport": 4,
+                    "num_initial_aircraft_at_vertiport": 3,
                     "initial_arrival_queue_state": 0
                 }
             },
             "DTLA": {
-                "layout": "clover_1_fato_10_park_dtla",
+                "layout": "clover_2_fato_20_park_dtla",
                 "holding_unit_capacity": 20,
                 "num_security_check_servers": 10,
                 "num_chargers": 12,
@@ -156,7 +155,7 @@
                     }
                 },
                 "aircraft_arrival_process": {
-                    "num_initial_aircraft_at_vertiport": 4,
+                    "num_initial_aircraft_at_vertiport": 3,
                     "initial_arrival_queue_state": 0
                 }
             }
@@ -165,13 +164,14 @@
     "airspace_params": {
         "airspace_layout_file_path": null,
         "airlink_capacity": 1,
-        "airlink_segment_length_mile": 1,
+        "airlink_segment_length_mile": 0,
+        "fixed_num_airlinks": 5,
         "holding_unit_capacity": 20, 
         "cruise_altitude": 450,  
         "static_wind": "relative_to_north", 
         "wind_magnitude_mph": 0,
         "wind_angle_degrees": 3.14159, 
-        "wind_data_file_path": "vertisim/vertisim/input/airspace/SFBayArea_wind_data.csv"
+        "wind_data_file_path": null
     },
     "passenger_params": {
         "randomize_constants": false,
@@ -221,7 +221,7 @@
         "time_hover_descend": 15,
         "time_rotor_spin_down": 5,
         "time_post_landing_safety_checks": 0,
-        "ground_taxi_speed": 1000000,
+        "ground_taxi_speed": 5,
         "time_passenger_embark_disembark": 0,
         "time_pre_charging_processes": 0,
         "time_charging_plug_disconnection": 0,
@@ -255,10 +255,14 @@
         "min_reserve_soc": 20
     },
     "output_params": {
-        "save_output": true,        
+        "save_output": false,        
+        "brief_metrics": false,
+        "only_return_brief_metrics": false,        
         "output_folder_path": "output/results",
         "config_output_file_name": "config",
         "performance_metrics_output_file_name": "performance_metrics",
+        "performance_metrics_db_name": "two_vertiport",
+        "database_format": "postgresql",
         "state_trajectory_db_name": "state_trajectory_db",
         "state_trajectory_db_tablename": "training_data_collection"
     }

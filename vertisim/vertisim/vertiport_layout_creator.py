@@ -1,18 +1,12 @@
 import pandas as pd
 import networkx as nx
 import numpy as np
-import os
-import pickle
 # import matplotlib.pyplot as plt
 from .utils.layout_layer_for_unfolded import save_vertiport_layout_layer_for_unfolded
 from .utils.read_files import read_input_file
 from .utils.helpers import check_if_dataframe_is_empty, convert_to_list
 from .utils.distance import haversine_dist
 from collections import defaultdict
-import diskcache as dc
-
-# Initialize a diskcache cache directory
-cache = dc.Cache('/tmp/vertiport_layout_cache')
 
 class VertiportLayout:
     def __init__(self, file_path: str, output_folder_path: str, layout_type: str, vertiport_id: str, flush_cache: bool = False):
@@ -26,118 +20,27 @@ class VertiportLayout:
         self.node_sizes = []
         self.color_map = []
 
-        if flush_cache:
-            self.flush_cache()
+        self.read_vertiport_layout()
+        self.add_fato_nodes_to_graph()
+        self.add_parking_pad_nodes_to_graph()
+        self.add_taxiway_nodes_to_graph()
+        self.add_nodes_to_graph()
+        self.edge_ids = self.add_edges_to_graph()
+        self.node_distances = self.calculate_distances_matrix()
+        self.num_fato = self.get_num_fato()
+        self.num_parking_pad = self.get_num_parking_pad()
+        self.num_taxiway_nodes = self.get_num_taxi_nodes()
+        self.num_edges = self.get_num_edges()
+        self.terminal_airspace_radius = self.compute_terminal_airspace_radius()
+        self.vertiport_element_locations = self.get_structural_entity_locations()
+        self.structural_entity_groups = self.get_structural_entity_groups()
+        # save_vertiport_layout_layer_for_unfolded(df1=self.fato_lat_lngs,
+        #                                          df2=self.park_lat_lngs,
+        #                                          df3=self.inters_lat_lngs,
+        #                                          height=self.vertiport_height,
+        #                                          layout_type=self.layout_type,
+        #                                          output_folder_path=self.output_folder_path)
 
-        cache_key = f'vertiport_layout_cache_{self.layout_type}'
-        if cache_key in cache:
-            self.load_from_cache(cache_key)        
-        else:
-            self.read_vertiport_layout()
-            self.add_fato_nodes_to_graph()
-            self.add_parking_pad_nodes_to_graph()
-            self.add_taxiway_nodes_to_graph()
-            self.add_nodes_to_graph()
-            self.edge_ids = self.add_edges_to_graph()
-            self.node_distances = self.calculate_distances_matrix()
-            self.num_fato = self.get_num_fato()
-            self.num_parking_pad = self.get_num_parking_pad()
-            self.num_taxiway_nodes = self.get_num_taxi_nodes()
-            self.num_edges = self.get_num_edges()
-            self.terminal_airspace_radius = self.compute_terminal_airspace_radius()
-            self.vertiport_element_locations = self.get_structural_entity_locations()
-            self.structural_entity_groups = self.get_structural_entity_groups()
-            # save_vertiport_layout_layer_for_unfolded(df1=self.fato_lat_lngs,
-            #                                          df2=self.park_lat_lngs,
-            #                                          df3=self.inters_lat_lngs,
-            #                                          height=self.vertiport_height,
-            #                                          layout_type=self.layout_type,
-            #                                          output_folder_path=self.output_folder_path)
-
-            self.save_to_cache(cache_key)
-
-    def flush_cache(self):
-        cache_key = f'vertiport_layout_cache_{self.layout_type}'
-        if cache_key in cache:
-            cache.delete(cache_key)
-        
-    def save_to_cache(self, cache_key):
-        cache_data = {
-            'G': self.G,
-            'node_pos': self.node_pos,
-            'edge_list': self.edge_list,
-            'node_sizes': self.node_sizes,
-            'color_map': self.color_map,
-            'edge_ids': self.edge_ids,
-            'node_distances': self.node_distances,
-            'num_fato': self.num_fato,
-            'num_parking_pad': self.num_parking_pad,
-            'num_taxiway_nodes': self.num_taxiway_nodes,
-            'num_edges': self.num_edges,
-            'terminal_airspace_radius': self.terminal_airspace_radius,
-            'vertiport_element_locations': self.vertiport_element_locations,
-            'structural_entity_groups': self.structural_entity_groups,
-            'fato_ids': self.fato_ids,
-            'fato_nodes': self.fato_nodes,
-            'parking_pad_ids': self.parking_pad_ids,
-            'parking_pad_nodes': self.parking_pad_nodes,       
-            'approach_fix_node': self.approach_fix_node,
-            'departure_fix_node': self.departure_fix_node,   
-            'taxiway_node_ids': self.taxiway_node_ids,
-            'taxiway_nodes': self.taxiway_nodes,
-            'vert_door_node': self.vert_door_node,
-            'waiting_room_node': self.waiting_room_node,
-            'boarding_gate_node': self.boarding_gate_node,
-            'edges': self.edges,
-            'approach_fix_lat_lng': self.approach_fix_lat_lng,
-            'departure_fix_lat_lng': self.departure_fix_lat_lng,
-            'fato_lat_lngs': self.fato_lat_lngs,
-            'park_lat_lngs': self.park_lat_lngs,
-            'inters_lat_lngs': self.inters_lat_lngs,
-            'vert_door_lat_lngs': self.vert_door_lat_lngs,
-            'waiting_room_lat_lngs': self.waiting_room_lat_lngs,
-            'boarding_gate_lat_lngs': self.boarding_gate_lat_lngs,
-            'vertiport_height': self.vertiport_height
-        }
-        cache.set(cache_key, cache_data)
-
-    def load_from_cache(self, cache_key):
-        cache_data = cache.get(cache_key)
-        self.G = cache_data['G']
-        self.node_pos = cache_data['node_pos']
-        self.edge_list = cache_data['edge_list']
-        self.node_sizes = cache_data['node_sizes']
-        self.color_map = cache_data['color_map']
-        self.edge_ids = cache_data['edge_ids']
-        self.node_distances = cache_data['node_distances']
-        self.num_fato = cache_data['num_fato']
-        self.num_parking_pad = cache_data['num_parking_pad']
-        self.num_taxiway_nodes = cache_data['num_taxiway_nodes']
-        self.num_edges = cache_data['num_edges']
-        self.terminal_airspace_radius = cache_data['terminal_airspace_radius']
-        self.vertiport_element_locations = cache_data['vertiport_element_locations']
-        self.structural_entity_groups = cache_data['structural_entity_groups']
-        self.fato_ids = cache_data['fato_ids']
-        self.fato_nodes = cache_data['fato_nodes']
-        self.parking_pad_ids = cache_data['parking_pad_ids']
-        self.parking_pad_nodes = cache_data['parking_pad_nodes']  
-        self.approach_fix_node = cache_data['approach_fix_node']    
-        self.departure_fix_node = cache_data['departure_fix_node']    
-        self.taxiway_node_ids = cache_data['taxiway_node_ids']
-        self.taxiway_nodes = cache_data['taxiway_nodes']   
-        self.vert_door_node = cache_data['vert_door_node']  
-        self.waiting_room_node = cache_data['waiting_room_node']
-        self.boarding_gate_node = cache_data['boarding_gate_node']
-        self.edges = cache_data['edges'] 
-        self.approach_fix_lat_lng = cache_data['approach_fix_lat_lng']
-        self.departure_fix_lat_lng = cache_data['departure_fix_lat_lng']
-        self.fato_lat_lngs = cache_data['fato_lat_lngs']                
-        self.park_lat_lngs = cache_data['park_lat_lngs']
-        self.inters_lat_lngs = cache_data['inters_lat_lngs']
-        self.vert_door_lat_lngs = cache_data['vert_door_lat_lngs']
-        self.waiting_room_lat_lngs = cache_data['waiting_room_lat_lngs']
-        self.boarding_gate_lat_lngs = cache_data['boarding_gate_lat_lngs']
-        self.vertiport_height = cache_data['vertiport_height']
 
     def import_vertiport_layout(self) -> pd.DataFrame:
         """

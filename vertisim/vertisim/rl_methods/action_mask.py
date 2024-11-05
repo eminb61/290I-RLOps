@@ -24,7 +24,7 @@ class ActionMask:
         self.vertiport_index_to_id_map = self.sim_setup.vertiport_index_to_id_map
         self.min_reserve_soc = self.config['aircraft_params']['min_reserve_soc']
         self.battery_capacity = self.config['aircraft_params']['battery_capacity']
-        self.num_waiting_time_bins = self.config['sim_params']['quadratic_states']['waiting_time_bins']
+        self.num_waiting_time_bins = int(self.config['sim_params']['max_passenger_waiting_time'] / self.config['external_optimization_params']['periodic_time_step'])
         # Cache SOC and charge increment configurations
         self.soc_increment_per_charge_event = self.config['external_optimization_params'].get('soc_increment_per_charge_event')
         self.charge_time_per_charge_event = self.config['external_optimization_params'].get('charge_time_per_charge_event')

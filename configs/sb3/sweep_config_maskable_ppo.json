@@ -1,7 +1,7 @@
 {
     "rl_model": "MaskablePPO",
     "tuning_library": "Optuna",
-    "description": "FlatPPO_5_min_dm_4_spoke_test",
+    "description": "FlatPPO",
     "parameters": {
         "learning_scheduler": {"values": ["constant", "linear"]},
         "learning_rate": {

@@ -12,4 +12,7 @@ xlrd==2.0.1
 fastapi>=0.103.2
 uvicorn>=0.23.2
 gymnasium==0.29.1
+psycopg2-binary
+PyYAML
+numpy==1.26.4
 # openpyxl

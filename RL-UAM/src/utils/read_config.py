@@ -28,11 +28,13 @@ def get_vertiport_state_variable_count(config):
     for state in config['sim_params']['simulation_states']['vertiport_states']:
         if state in config['sim_params']['per_destination_states']:
             count += get_vertiport_count(config) - 1
-        elif state in config['sim_params']['quadratic_states']:
-            # NEED BETTER HANDLING
-            count += (config['sim_params']['quadratic_states'][state]) * (get_vertiport_count(config) - 1)
         else:
-            count += 1
+            if state == "waiting_time_bins":
+                # HARD CODED for 290I
+                num_waiting_time_bins = config['sim_params']['max_passenger_waiting_time'] // config['external_optimization_params']['periodic_time_step']
+                count += num_waiting_time_bins * (get_vertiport_count(config) - 1)
+            else:
+                count += 1
     return count
 
 def get_aircraft_state_variable_count(config):

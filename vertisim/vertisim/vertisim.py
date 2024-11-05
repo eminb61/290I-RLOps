@@ -526,19 +526,34 @@ class VertiSim:
         return list(self.config['network_and_demand_params']['vertiports'].keys())
     
     def get_action_count(self):
-        return self.config['external_optimization_params']['num_actions']
+        return self.get_vertiport_count() + 2
 
     def get_vertiport_state_variable_count(self):
-        return self.config['external_optimization_params']['num_vertiport_state_variables']
+        count = 0
+        for state in self.config['sim_params']['simulation_states']['vertiport_states']:
+            if state in self.config['sim_params']['per_destination_states']:
+                count += self.get_vertiport_count() - 1
+            else:
+                if state == "waiting_time_bins":
+                    # HARD CODED for 290I
+                    num_waiting_time_bins = self.config['sim_params']['max_passenger_waiting_time'] // self.config['external_optimization_params']['periodic_time_step']
+                    count += num_waiting_time_bins * (self.get_vertiport_count() - 1)
+                else:
+                    count += 1
+        return count
 
     def get_aircraft_state_variable_count(self):
-        return self.config['external_optimization_params']['num_aircraft_state_variables']
+        return len(self.config['sim_params']['simulation_states']['aircraft_states'])
     
     def get_environmental_state_variable_count(self):
-        return self.config['external_optimization_params']['num_environmental_state_variables']
+        num_env_vars = len(self.config['sim_params']['simulation_states']['environmental_states'])
+        if num_env_vars > 0:
+            return num_env_vars
+        else:
+            return -1
     
     def get_additional_state_variable_count(self):
-        return self.config['external_optimization_params']['num_additional_state_variables']
+        return len(self.config['sim_params']['simulation_states']['additional_states'])
     
     def get_passenger_count(self):
         return sum(
@@ -566,40 +581,40 @@ class VertiSim:
             for _, vertiport in self.config['network_and_demand_params']['vertiports'].items()
         )
     
-    def __getstate__(self):
-        state = self.__dict__.copy()
-        # Remove sim_instance to prevent pickling non-picklable objects
-        state['env'] = None
-        state['sim_setup'] = None
-        return state
+    # def __getstate__(self):
+    #     state = self.__dict__.copy()
+    #     # Remove sim_instance to prevent pickling non-picklable objects
+    #     state['env'] = None
+    #     state['sim_setup'] = None
+    #     return state
     
-    def __setstate__(self, state):
-        self.__dict__.update(state)
-        # Reinitialize sim_instance
-        self.env = simpy.Environment()
-        self.terminal_event, self.truncation_event, self.truncation_events, self.stopping_events = self.set_simulation_events(env=self.env, config=self.config)
+    # def __setstate__(self, state):
+    #     self.__dict__.update(state)
+    #     # Reinitialize sim_instance
+    #     self.env = simpy.Environment()
+    #     self.terminal_event, self.truncation_event, self.truncation_events, self.stopping_events = self.set_simulation_events(env=self.env, config=self.config)
 
-        self.sim_start_time = time.time()
-        self.sim_setup = SimSetup(env=self.env,
-                                  sim_params=self.config['sim_params'],
-                                  sim_mode=self.config['sim_mode'],
-                                  external_optimization_params=self.config['external_optimization_params'],
-                                  network_and_demand_params=self.config['network_and_demand_params'],
-                                  airspace_params=self.config['airspace_params'],
-                                  passenger_params=self.config['passenger_params'],
-                                  aircraft_params=self.config['aircraft_params'],
-                                  output_params=self.config['output_params'],
-                                  stopping_events=self.stopping_events,
-                                  truncation_events=self.truncation_events,
-                                  truncation_event=self.truncation_event)        
-        # Set the max simulation time
-        self.max_sim_time = sec_to_ms(self.sim_setup.sim_params['max_sim_time'])
+    #     self.sim_start_time = time.time()
+    #     self.sim_setup = SimSetup(env=self.env,
+    #                               sim_params=self.config['sim_params'],
+    #                               sim_mode=self.config['sim_mode'],
+    #                               external_optimization_params=self.config['external_optimization_params'],
+    #                               network_and_demand_params=self.config['network_and_demand_params'],
+    #                               airspace_params=self.config['airspace_params'],
+    #                               passenger_params=self.config['passenger_params'],
+    #                               aircraft_params=self.config['aircraft_params'],
+    #                               output_params=self.config['output_params'],
+    #                               stopping_events=self.stopping_events,
+    #                               truncation_events=self.truncation_events,
+    #                               truncation_event=self.truncation_event)        
+    #     # Set the max simulation time
+    #     self.max_sim_time = sec_to_ms(self.sim_setup.sim_params['max_sim_time'])
 
-        self.num_aircraft = self.get_aircraft_count()
+    #     self.num_aircraft = self.get_aircraft_count()
 
-        if self.config['sim_mode']['rl']:
-            self.setup_for_rl()
+    #     if self.config['sim_mode']['rl']:
+    #         self.setup_for_rl()
 
-        self.status = True
-        self.last_decision_time = -1
-        self.decision_making_interval = sec_to_ms(self.config['external_optimization_params']['periodic_time_step'])     
+    #     self.status = True
+    #     self.last_decision_time = -1
+    #     self.decision_making_interval = sec_to_ms(self.config['external_optimization_params']['periodic_time_step'])     

@@ -1,84 +1,103 @@
 from typing import Any, SupportsFloat, Dict, Tuple, List
 import gymnasium as gym
 import numpy as np
-from src.utils.helpers import extract_dict_values, get_vertiport_ids_from_config, get_vertiport_distances
-from src.utils.policy_helpers import create_vertiport_edge_index, create_aircraft_edge_index
+from src.utils.helpers import extract_dict_values
 from src.utils.read_config import get_simulation_params
 import requests
 import itertools
 import torch
-from torch_geometric.data import Data
 import time
 import json
 import os
+from src.utils.config_watcher import ConfigWatcher
 import sys
 from requests.exceptions import RequestException
-import diskcache as dc
-
 
 SERVICE_ORCHESTRATOR_API_URL = "http://service_orchestrator:6000"
 VERTISIM_API_URL = "http://vertisim_service:5001"
-
-vertiport_distance_cache = dc.Cache('/tmp/vertiport_distance_cache')
 
 class VertiSimEnvWrapper(gym.Env):
     def __init__(self, rl_model: str, env_config: Dict) -> None:
         super().__init__()
         self.rl_model = rl_model
         self.env_config = env_config
+        self.config_path = os.getenv('CONFIG_PATH', '/app/config_rl_training.json')
+
+        # # Initialize config watcher
+        # self.config_watcher = ConfigWatcher(self.config_path)
+        # self.config_watcher.start(self._handle_config_update)
+
         self.client_server_mode = bool(self.env_config['sim_mode']['client_server'])
+        self.instance_id = None
         self.params = self._fetch_params()
 
         if not self.client_server_mode:
             from vertisim.vertisim.instance_manager import InstanceManager
             self.instance_manager = InstanceManager(config=self.env_config)
-
-            # Create vertiport edge index
-            if self.rl_model in ["MaskableGATPPO", "MaskableRecurrentGATPPO"]:
-                self.vertiport_ids = get_vertiport_ids_from_config(self.env_config)
-                vertiport_id_config = '_'.join(self.vertiport_ids)
-                self.vertiport_distances = get_vertiport_distances(cache_key=vertiport_id_config)
-                
-                self.vertiport_edge_index, self.vertiport_edge_attr = create_vertiport_edge_index(
-                    self.vertiport_ids, 
-                    self.vertiport_distances
-                    )
-                self.aircraft_edge_index, self.aircraft_edge_attr = create_aircraft_edge_index(
-                    self.params['n_aircraft']
-                    )
-        
-        else:
-            if self.rl_model in ["MaskableGATPPO", "MaskableRecurrentGATPPO"]:
-                # This requires the vertiport ids and distances df to be created within the RL environment.
-                raise NotImplementedError("MaskableGATPPO and MaskableRecurrentGATPPO is not supported in client-server mode.")
                     
+        self._setup_spaces()
+        
+    def _setup_spaces(self):
+        """Setup action and observation spaces"""
         self.action_space = self.get_action_space(self.params['n_actions'], 
-                                                  self.params['n_aircraft'])
-        self.observation_space = self.get_observation_space(self.params['n_vertiports'],
-                                                            self.params['n_aircraft'],
-                                                            self.params['n_vertiport_state_variables'],
-                                                            self.params['n_aircraft_state_variables'],
-                                                            self.params['n_environmental_state_variables'],
-                                                            self.params['n_additional_state_variables'])
+                                                self.params['n_aircraft'])
+        self.observation_space = self.get_observation_space(
+            self.params['n_vertiports'],
+            self.params['n_aircraft'],
+            self.params['n_vertiport_state_variables'],
+            self.params['n_aircraft_state_variables'],
+            self.params['n_environmental_state_variables'],
+            self.params['n_additional_state_variables']
+        )
         self.mask = np.zeros((self.params['n_aircraft'], self.params['n_actions']), dtype=np.int64)
-        # Start with only do nothing actions enabled
         self.mask[:, -1] = 1
 
+    def _load_config(self) -> Dict:
+        """Load config from file"""
+        try:
+            with open(self.config_path, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            raise RuntimeError(f"Failed to load config file: {str(e)}")
+
+    # def _handle_config_update(self, new_config: Dict):
+    #     """Handle config file updates"""
+    #     try:
+    #         self.env_config = new_config
+            
+    #         # Update parameters based on new config
+    #         self.params = get_simulation_params(self.env_config)
+            
+    #         # Reset spaces with new parameters
+    #         self._setup_spaces()
+            
+    #         # Force a reset on next step
+    #         self.needs_reset = True
+
+    #         print(f"Updated environment with new config")
+            
+    #     except Exception as e:
+    #         raise RuntimeError(f"Failed to update environment with new config: {str(e)}")
+
     def _fetch_params(self):
-        if self.client_server_mode:
-            return self._fetch_params_client_server()
-        else:
-            return self._fetch_params_local()
+        # if self.client_server_mode:
+        #     return self._fetch_params_client_server()
+        # else:
+        #     return self._fetch_params_local()
+        return self._fetch_params_local()
         
     def _fetch_params_local(self):
         return get_simulation_params(self.env_config)
 
     def _fetch_params_client_server(self):
-        response = requests.get(f"{VERTISIM_API_URL}/get_space_params", timeout=30)
+        if not self.instance_id:
+            raise RuntimeError("No instance ID available")
+            
+        response = requests.get(f"{VERTISIM_API_URL}/instance/{self.instance_id}/space_params", timeout=30)
         if response.status_code == 200:
             return response.json()
         else:
-            raise ConnectionError(f"Failed to fetch parameters from VertiSim. Status code: {response.status_code}, Response text: {response.text}")  
+            raise ConnectionError(f"Failed to fetch parameters from VertiSim. Status code: {response.status_code}, Response text: {response.text}")
 
     def get_action_space(self, n_actions, n_aircraft):
         if self.rl_model in ["DQN"]:
@@ -121,25 +140,24 @@ class VertiSimEnvWrapper(gym.Env):
         return self.process_step_response(response)
 
     def _step_client_server(self, action):
-        # Retrying logic parameters
         MAX_RETRIES: int = 6
         BACKOFF_FACTOR: int = 2
-        INITIAL_DELAY: int = 1  # Initial delay in seconds
+        INITIAL_DELAY: int = 1
 
         for attempt in range(MAX_RETRIES):
             try:
-                # Send the action to VertiSim via HTTP and receive the new state
-                response = requests.post(f"{VERTISIM_API_URL}/step", json={"actions": action}, timeout=120)
+                response = requests.post(
+                    f"{VERTISIM_API_URL}/instance/{self.instance_id}/step",
+                    json={"actions": action},
+                    timeout=120
+                )
                 if response.status_code == 200:
                     return self.process_step_response(response)
                 else:
                     raise ConnectionError(f"Failed to fetch step from VertiSim. Status code: {response.status_code}, Response text: {response.text}")
-
             except RequestException as e:
                 if attempt >= MAX_RETRIES - 1:
-                    raise ConnectionError(
-                        f"Failed to fetch step from VertiSim after {MAX_RETRIES} tries. Error: {str(e)}"
-                    ) from e
+                    raise ConnectionError(f"Failed to fetch step from VertiSim after {MAX_RETRIES} tries. Error: {str(e)}") from e
                 delay = INITIAL_DELAY * BACKOFF_FACTOR ** attempt
                 print(f"Failed to fetch step from VertiSim. Error: {str(e)}. Retrying in {delay} seconds...")
                 time.sleep(delay)
@@ -162,8 +180,13 @@ class VertiSimEnvWrapper(gym.Env):
         #     return new_state, reward, dones, info
 
     def reset(self, seed=None, options=None):
+        """Reset environment and reload config"""
         super().reset(seed=seed)
-        # print("RL called reset")
+        
+        # Reload config file
+        self.env_config = self._load_config()
+        self.params = self._fetch_params()
+        self._setup_spaces()
 
         if self.client_server_mode:
             return self._reset_client_server()
@@ -186,9 +209,10 @@ class VertiSimEnvWrapper(gym.Env):
         response = requests.post(f"{SERVICE_ORCHESTRATOR_API_URL}/reset_instance", timeout=120)
         if response.status_code == 200:
             try:
-                # Extract the initial state from the response
-                initial_state = response.json()['initial_state']
-                action_mask = response.json()['action_mask']
+                response_data = response.json()
+                self.instance_id = response_data["instance_id"]
+                initial_state = response_data['initial_state']
+                action_mask = response_data['action_mask']
                 
                 return self.convert_state_and_action_mask_to_tensor(initial_state, action_mask)
             except:
@@ -212,13 +236,17 @@ class VertiSimEnvWrapper(gym.Env):
         pass
     
     def close(self):
-        """
-        Close the environment and release all resources.
-        """
-        if hasattr(self, 'instance_manager') and self.instance_manager is not None:
+        if self.client_server_mode and self.instance_id:
+            try:
+                requests.delete(f"{VERTISIM_API_URL}/instance/{self.instance_id}", timeout=30)
+            except:
+                pass
+            self.instance_id = None
+        elif hasattr(self, 'instance_manager') and self.instance_manager:
             self.instance_manager.close()
-            self.instance_manager = None  # Optional: Help garbage collection
-        # Call the super class close if needed
+            self.instance_manager = None
+        if hasattr(self, 'config_watcher'):
+            self.config_watcher.stop()
         super().close()
         
     def wait_for_vertisim(self, timeout: int = 120):
@@ -353,20 +381,6 @@ class VertiSimEnvWrapper(gym.Env):
             return getattr(self, attr_name)
         except AttributeError:
             raise AttributeError(f"Attribute {attr_name} not found in VertiSimEnvWrapper.")
-        
-    def get_gat_feature_extractor_params(self):
-        return {
-            'n_vertiports': self.params['n_vertiports'],
-            'n_aircraft': self.params['n_aircraft'],
-            'n_vertiport_state_variables': self.params['n_vertiport_state_variables'],
-            'n_aircraft_state_variables': self.params['n_aircraft_state_variables'],
-            'n_environmental_state_variables': self.params['n_environmental_state_variables'],
-            'n_additional_state_variables': self.params['n_additional_state_variables'],
-            'vertiport_edge_index': self.vertiport_edge_index,
-            'vertiport_edge_attr': self.vertiport_edge_attr,
-            'aircraft_edge_index': self.aircraft_edge_index,
-            'aircraft_edge_attr': self.aircraft_edge_attr
-        }
     
     def __getstate__(self):
         state = self.__dict__.copy()

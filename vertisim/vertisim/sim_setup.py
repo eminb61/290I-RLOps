@@ -36,13 +36,7 @@ from .utils.helpers import set_seed, get_random_id, create_dict_for_fixes, is_no
 from .utils.import_aircraft_energy_consumption_data import import_aircraft_energy_consumption_data
 from .utils.setup_distributions import setup_passenger_distributions
 from .utils.units import sec_to_ms, ms_to_min
-import diskcache as dc
 from enum import Enum, auto
-
-
-vertiport_distance_cache = dc.Cache('/tmp/vertiport_distance_cache')
-node_locations_cache = dc.Cache('/tmp/node_locations_cache')
-
 
 class SimSetup:
     def __init__(self,
@@ -107,9 +101,7 @@ class SimSetup:
         self.create_passenger_arrival_process()
 
     def flush_cache(self):
-        if self.sim_params['flush_cache']:
-            vertiport_distance_cache.clear()
-            node_locations_cache.clear()
+        pass
 
     def create_loggers(self, reset):
         """
@@ -202,11 +194,7 @@ class SimSetup:
     def compute_vertiport_distances(self) -> pd.DataFrame:
         """
         Imports the vertiport distance
-        """
-        cache_key = self.vertiport_id_config
-        if cache_key in vertiport_distance_cache:
-            return vertiport_distance_cache[cache_key]
-            
+        """            
         # Import vertiport distance
         vertiport_distances = calc_vertiport_distances(
             vertiport_network_file_path=self.network_and_demand_params['vertiport_network_file_path'],
@@ -215,15 +203,6 @@ class SimSetup:
             network_simulation=self.sim_params['network_simulation'])
         if self.sim_params['verbose']:
             print("Success: Vertiport network imported.")
-
-        vertiport_distance_cache[cache_key] = vertiport_distances
-
-        # Write vertiport distances to a file
-        # if self.sim_params['flush_cache']:
-        # Get the root folder path
-        root_folder_path = os.getcwd()
-        vertiport_distances.to_csv(os.path.join(root_folder_path, f'cache/{cache_key}_distances.csv'), index=False)
-
         return vertiport_distances
     
     def num_vertiports(self):
@@ -270,7 +249,7 @@ class SimSetup:
             network_and_demand=self.network_and_demand_params,
             aircraft_capacity=self.aircraft_params['pax'],
             pax_waiting_time_threshold=self.sim_params['max_passenger_waiting_time'],
-            num_waiting_time_bins=self.external_optimization_params['num_waiting_time_bins']
+            num_waiting_time_bins=int(self.sim_params['max_passenger_waiting_time'] / self.external_optimization_params['periodic_time_step'])
         )
     
     def create_event_saver(self):
@@ -366,11 +345,7 @@ class SimSetup:
             airspace_params=self.airspace_params
         ) 
     
-    def build_node_locations_dict(self):
-        cache_key = self.vertiport_id_config
-        if cache_key in node_locations_cache:
-            return node_locations_cache[cache_key]
-        
+    def build_node_locations_dict(self):        
         # Build node locations dictionary
         node_locations = {}
         # Merge all vertiport element locations
@@ -380,7 +355,6 @@ class SimSetup:
         node_locations |= self.airspace.waypoint_locations
         node_locations |= {None: None}
 
-        node_locations_cache[cache_key] = node_locations
         return node_locations    
     
     def merge_structural_entity_groups(self) -> dict:
