@@ -214,7 +214,7 @@ def main():
     elif not args.parallel and not args.optimize:
         # Run the training loop
         print(f"Running SB3 runner on {args.num_cores} core")
-        log_dir, tensorboard_log_dir = create_log_directories(".", rl_config['rl_model'])
+        log_dir, tensorboard_log_dir = create_log_directories(rl_config['description'], rl_config['rl_model'])
         sb3_runner(env_config=env_config, rl_config=rl_config, progress_bar=True, save_model=args.save_model, log_dir=log_dir, tensorboard_log_dir=tensorboard_log_dir)
     else:
         # Raise CLI error
