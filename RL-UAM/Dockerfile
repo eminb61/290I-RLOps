@@ -26,5 +26,5 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 EXPOSE 6006
 
 # Run main.py when the container launches
-CMD ["python", "-W", "ignore", "src/scripts/prediction.py", "--env_config", "/app/config_rl_prediction.json", "-m" "/app/model/MaskablePPO_2024-11-04_23-27-21.zip", "-n", "MaskablePPO_2024-11-04_23-27-21_vecnormalize.pkl", "-br", "paxp", "/app/vertisim/input/passenger/spill_demand/test"]
-# CMD ["python", "-W", "ignore", "src/scripts/sb3_runner.py", "--env_config", "/app/config_rl_training.json", "--rl_config", "/app/maskedppo.yaml", "-s", "-n", "1"]
+# CMD ["python", "-W", "ignore", "src/scripts/prediction.py", "--env_config", "/app/config_rl_prediction.json", "-m" "/app/model/MaskablePPO_2024-11-04_23-27-21.zip", "-n", "MaskablePPO_2024-11-04_23-27-21_vecnormalize.pkl", "-br", "paxp", "/app/vertisim/input/passenger/spill_demand/test"]
+CMD ["python", "-W", "ignore", "src/scripts/sb3_runner.py", "--env_config", "/app/config_rl_training.json", "--rl_config", "/app/sweep_config_maskable_ppo.json", "-s", "-o", "-n", "8"]

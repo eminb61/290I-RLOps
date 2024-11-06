@@ -56,7 +56,7 @@
         "charge_assignment_sensitivity": null,
         "charge_schedule_file_path": null,
         "flight_schedule_file_path": null,
-        "optuna_db_url": "sqlite:///vert_2_dm_5mins.db",        
+        "optuna_db_url": "sqlite:///vert_2_290i.db",        
         "num_parallel_envs": 1,
         "soc_increment_per_charge_event": null,
         "charge_time_per_charge_event": 299,

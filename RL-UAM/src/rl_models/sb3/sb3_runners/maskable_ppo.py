@@ -72,9 +72,9 @@ def maskable_ppo(log_dir, tensorboard_log_dir, env_config, rl_config, progress_b
     
 
     early_stopping_callback = EarlyStoppingCallback(check_freq=20000,
-                                                    performance_threshold=5000,
-                                                    min_timesteps=150000) 
-    # callbacks.append(early_stopping_callback)   
+                                                    performance_threshold=-6000,
+                                                    min_timesteps=100000) 
+    callbacks.append(early_stopping_callback)   
     
     if rl_config["learning_scheduler"] == "CosineAnnealingWarmRestarts":
         from src.utils.callbacks import CosineAnnealingSchedulerCallback

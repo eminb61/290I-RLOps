@@ -29,7 +29,7 @@
             "min": 0.00001,
             "max": 0.01
         },
-        "total_steps": {"values": [2000000]},
+        "total_steps": {"values": [580000]},
         "seed": {"values": [0, 1, 2]},
         "num_workers": {"values": [1]} 
     }

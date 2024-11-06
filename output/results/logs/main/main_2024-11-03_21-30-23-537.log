@@ -1,4 +1,0 @@
-00:00:00 DEBUG    Vertiport ids: {0: 'DTLA', 1: 'LAX'}
-00:00:00 DEBUG    Flight directions: {'DTLA_LAX': 0, 'LAX_DTLA': 1}
-00:00:00 DEBUG    No charging schedule is provided. The arrival schedule will read tail numbers from the file.
-00:00:00 INFO    Total number of passengers: 984
