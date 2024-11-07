@@ -10,7 +10,7 @@ services:
     networks:
       - rl_network
     volumes:
-      - ./configs/rl/config_training.json:/app/config.json   
+      # - ./configs/rl/config_training.json:/app/config.json   
       - ./vertisim:/app/vertisim
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
@@ -42,12 +42,8 @@ services:
     volumes:
       - ./RL-UAM:/app 
       - ./configs/rl/config_training.json:/app/config_rl_training.json:rw   
-      - ./configs/sb3/sweep_config_maskable_ppo.json:/app/sweep_config_maskable_ppo.json   
       - ./configs/sb3/maskedppo.yaml:/app/maskedppo.yaml
-      - ./logs:/app/logs  # Mount logs directory
-      - ./model:/app/model  # Mount models directory
       - ./configs/rl/config_prediction.json:/app/config_rl_prediction.json:ro
-      - ./vertisim/input:/app/vertisim/input:ro  # Mount input data
     environment:
       - CONFIG_PATH=/app/config_rl_training.json
     depends_on:
