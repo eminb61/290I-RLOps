@@ -1,0 +1,16 @@
+torch
+torch-geometric
+numpy==1.26.4
+pandas==2.1.3
+simpy==4.0.1
+gymnasium==0.29.1
+requests==2.29.0
+stable-baselines3
+tensorboard==2.10.0
+# tensorboardX==2.5.1
+sb3-contrib
+tqdm
+PyYAML
+optuna
+optuna_distributed
+watchdog

@@ -1,0 +1,15 @@
+description: "FlatPPO"
+rl_model: "MaskablePPO"
+learning_scheduler: "linear"
+seed: 2
+hidden_layers: 8
+n_hidden_layers: 1
+activation_fn: "ReLU"
+learning_rate: 0.0018575
+n_steps: 18
+batch_size: 16
+ent_coef: 0.0064619
+gamma: 0.95804
+total_steps: 20000
+clip_range: 0.20103
+clip_range_vf: 0.47211

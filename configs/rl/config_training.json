@@ -1,0 +1,269 @@
+{
+    "sim_params": {
+        "max_sim_time": 39600,
+        "arrival_priority": 0,
+        "departure_priority": 1,
+        "simultaneous_taxi_and_take_off": true,
+        "flush_cache": false,
+        "num_initial_passengers": 0,
+        "random_seed": 42,
+        "logging": false,
+        "log_level": "debug",
+        "max_passenger_waiting_time": 600,
+        "per_destination_states": [
+            "num_waiting_passengers",
+            "num_spilled_passengers",                
+            "total_pax_waiting_time_per_od",
+            "avg_pax_waiting_time_per_od",
+            "std_pax_waiting_time_per_od",
+            "expected_pax_arr_per_od"
+        ],
+        "simulation_states": {
+            "vertiport_states": [
+                "waiting_time_bins",
+                "num_spilled_passengers"
+            ],
+            "aircraft_states": [
+                "od_pair",
+                "soc",
+                "status"
+            ],
+            "environmental_states": [],
+            "additional_states": [
+                "sim_time"
+            ]
+        },
+        "fleet_rebalancing": false,
+        "save_trajectories": false,
+        "only_aircraft_simulation": false,
+        "network_simulation": true,
+        "verbose": false,
+        "print_brief_metrics": true,        
+        "training_data_collection": false,
+        "algorithm": "MaskablePPO",
+        "light_simulation": true        
+    },
+    "sim_mode": {
+        "ondemand": false,
+        "offline_optimization": false,
+        "rl": true,
+        "client_server": true,
+        "optim_rl_comparison": true
+    },
+    "external_optimization_params": {
+        "flight_duration_constant": null,
+        "soc_decrement_constant": null,
+        "charge_assignment_sensitivity": null,
+        "charge_schedule_file_path": null,
+        "flight_schedule_file_path": null,
+        "optuna_db_url": "sqlite:///vert_2_290i.db",        
+        "num_parallel_envs": 1,
+        "soc_increment_per_charge_event": null,
+        "charge_time_per_charge_event": 299,
+        "periodic_time_step": 300,
+        "periodic_and_event_driven": false,
+        "spill_optimization": true,
+        "stopping_events": [
+            "passenger_arrival_event",
+            "aircraft_parking_pad_arrival_event",
+            "charging_end_event"
+        ],
+        "truncation_events":[
+            "soc_at_zero_event",
+            "infeasible_charge_truncation_event",
+            "overcharge_truncation_event",
+            "not_at_vertiport_truncation_event"
+        ],
+        "truncation": true,
+        "reward_function_parameters": {
+            "waiting_time_cost_type": "linear",
+            "waiting_time_cost_unit": "minute",
+            "waiting_time_cost": 0,
+            "holding_penalty": 0,    
+            "trip_reward": 10,
+            "flight_cost": -1,
+            "truncation_penalty": -100000,
+            "soc_reward_threshold": 80,
+            "waiting_full_pax_but_charge_penalty": -2,
+            "waiting_full_pax_but_do_nothing_penalty": -4,
+            "no_pax_and_do_nothing_reward": 1,
+            "no_pax_and_charge_reward": 2,
+            "unnecessary_flight_penalty": -20,
+            "charge_reward": 1,
+            "repositioning_reward": 27,
+            "spill_cost": 50,    
+            "usd_energy_per_kwh": 0.28,                            
+            "usd_casm": 0.79,
+            "usd_base_fare": 0,
+            "usd_pax_mile": 3
+        }
+    },
+    "network_and_demand_params": {
+        "vertiport_network_file_path": null,
+        "vertiport_layout_file_path": "vertisim/vertisim/input/vertiport_layouts/vertiport_layout_rl.xls",
+        "passenger_schedule_file_path": null,
+        "passenger_arrival_rates_path": null,
+        "pick_demand_files_path": "vertisim/vertisim/input/passenger/spill_demand/train",
+        "pick_rate_files_path": null,        
+        "autoregressive_demand_files_path": null,
+        "demand_probabilities": null,
+        "demand_lookahead_time": 900,
+        "star_network": false,
+        "hub_vertiport_id": "LAX",
+        "vertiports": {
+            "LAX": {
+                "layout": "clover_3_fato_30_park_lax",
+                "holding_unit_capacity": 20,
+                "num_security_check_servers": 10,
+                "num_chargers": 30,
+                "charger_max_charge_rate": 350,
+                "charger_efficiency": 0.9,
+                "shared_charger_sets": null,
+                "passenger_arrival_process": {
+                    "passenger_interarrival_constant": null,
+                    "num_passengers": 50,
+                    "passenger_arrival_distribution": {
+                        "distribution_name": "expon",
+                        "parameters": {
+                            "scale": null
+                        },
+                        "max_val_in_dist": null
+                    }
+                },
+                "aircraft_arrival_process": {
+                    "num_initial_aircraft_at_vertiport": 3,
+                    "initial_arrival_queue_state": 0
+                }
+            },
+            "DTLA": {
+                "layout": "clover_2_fato_20_park_dtla",
+                "holding_unit_capacity": 20,
+                "num_security_check_servers": 10,
+                "num_chargers": 12,
+                "charger_max_charge_rate": 350,
+                "charger_efficiency": 0.9,
+                "shared_charger_sets": null,
+                "passenger_arrival_process": {
+                    "passenger_interarrival_constant": null,
+                    "num_passengers": 50,
+                    "passenger_arrival_distribution": {
+                        "distribution_name": "expon",
+                        "parameters": {
+                            "scale": null
+                        },
+                        "max_val_in_dist": null
+                    }
+                },
+                "aircraft_arrival_process": {
+                    "num_initial_aircraft_at_vertiport": 3,
+                    "initial_arrival_queue_state": 0
+                }
+            }
+        }
+    },
+    "airspace_params": {
+        "airspace_layout_file_path": null,
+        "airlink_capacity": 1,
+        "airlink_segment_length_mile": 0,
+        "fixed_num_airlinks": 5,
+        "holding_unit_capacity": 20, 
+        "cruise_altitude": 450,  
+        "static_wind": "relative_to_north", 
+        "wind_magnitude_mph": 0,
+        "wind_angle_degrees": 3.14159, 
+        "wind_data_file_path": null
+    },
+    "passenger_params": {
+        "randomize_constants": false,
+        "car_to_entrance_walking_time_constant": 0,
+        "car_to_entrance_walking_time_dist": null,
+        "security_check_time_constant": 0,
+        "security_check_time_dist": null,
+        "waiting_room_to_boarding_gate_walking_time_constant": 0,
+        "waiting_room_to_boarding_gate_walking_time_dist": null,
+        "boarding_gate_to_aircraft_time_constant": 0,
+        "boarding_gate_to_aircraft_time_dist": null,
+        "deboard_aircraft_and_walk_to_exit_constant": 0,
+        "deboard_aircraft_and_walk_to_exit_dist": null
+    },
+    "aircraft_params": {
+        "aircraft_model": "jobyS4",
+        "pax": 4,
+        "range": 150,
+        "soc": 100,
+        "battery_capacity": 160,
+        "pax_mass": 100,
+        "vertical_takeoff_velocity": 1.5,
+        "vertical_landing_velocity": 1.5,
+        "climb_transition_end_forward_velocity": 18,
+        "climb_transition_vertical_velocity": 1.5,
+        "climb_phase_end_forward_velocity": 45,
+        "climb_phase_vertical_velocity": 3.125,
+        "cruise_speed": 67, 
+        "descend_phase_end_forward_velocity": 36,
+        "descend_phase_vertical_velocity": 3.8,
+        "descend_transition_end_forward_velocity": 0,
+        "descend_transition_vertical_velocity": 3.8,
+        "max_vertical_velocity": 5,
+        "max_horizontal_velocity": 89,
+        "ground_altitude": 0,
+        "hover_altitude": 15,
+        "cruise_altitude": 450,
+        "time_tug_connection": 0,
+        "time_tug_disconnection": 0,
+        "time_pre_take_off_check_list": 0,
+        "time_rotor_spin_up": 5,
+        "time_hover_climb": 15,
+        "time_climb_transition": 30,
+        "time_climb": 65,
+        "time_descend": 65,
+        "time_descend_transition": 30,
+        "time_hover_descend": 15,
+        "time_rotor_spin_down": 5,
+        "time_post_landing_safety_checks": 0,
+        "ground_taxi_speed": 5,
+        "time_passenger_embark_disembark": 0,
+        "time_pre_charging_processes": 0,
+        "time_charging_plug_disconnection": 0,
+        "time_post_charging_processes": 0,
+        "mtom": 2182,
+        "wing_area": 13,
+        "disk_load": 45.9,
+        "f": 1.03,
+        "FoM": 0.8,
+        "cd_0": 0.015,
+        "cl_max": 1.5,
+        "ld_max": 18,
+        "eta_hover": 0.85,
+        "eta_climb": 0.85,
+        "eta_descend": 0.85,
+        "eta_cruise": 0.9,
+        "atmosphere_condition": "good",
+        "soc_update_interval": 30,        
+        "time_charging": null,
+        "target_soc_constant": null,
+        "charging_time_dist": {
+            "distribution_name": "expon",
+            "parameters": {
+                "scale": 600
+            },
+            "max_val_in_dist": null
+        },
+        "aircraft_energy_consumption_data_folder_path": null,
+        "min_init_soc": 20,
+        "max_init_soc": 80,
+        "min_reserve_soc": 20
+    },
+    "output_params": {
+        "save_output": false,        
+        "brief_metrics": false,
+        "only_return_brief_metrics": false,        
+        "output_folder_path": "output/results",
+        "config_output_file_name": "config",
+        "performance_metrics_output_file_name": "performance_metrics",
+        "performance_metrics_db_name": "two_vertiport",
+        "database_format": "postgresql",
+        "state_trajectory_db_name": "state_trajectory_db",
+        "state_trajectory_db_tablename": "training_data_collection"
+    }
+}

@@ -1,0 +1,50 @@
+version: '3.11'
+
+services:
+  vertisim_service:
+    build:
+      context: .
+      dockerfile: ./vertisim/Dockerfile
+    ports:
+      - "5001:5001"
+    networks:
+      - rl_network
+    volumes:
+      - ./configs/rl/config_training.json:/app/config.json   
+      - ./vertisim:/app/vertisim
+
+  service_orchestrator:
+    build:
+      context: ./service-orchestrator
+    ports:
+      - "6000:6000"
+    networks:
+      - rl_network
+    depends_on:
+      vertisim_service:
+        condition: service_healthy
+    volumes:
+      - ./service-orchestrator:/app   
+
+  rl_algorithm:
+    build:
+      context: ./RL-UAM
+    ports:
+      - "6006:6006"    
+    networks:
+      - rl_network
+    volumes:
+      - ./RL-UAM:/app 
+      - ./configs/rl/config_training.json:/app/config_training.json
+      - ./configs/sb3/maskedppo.yaml:/app/maskedppo.yaml
+      - ./configs/sb3/sweep_config_maskable_ppo.json:/app/sweep_config_maskable_ppo.json
+      - ./configs/rl/config_prediction.json:/app/config_prediction.json
+    environment:
+      - CONFIG_PATH=/app/config_training.json
+    depends_on:
+      service_orchestrator:
+        condition: service_started
+
+networks:
+  rl_network:
+    driver: bridge
